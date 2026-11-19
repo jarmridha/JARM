@@ -1,0 +1,87 @@
+package com.jarm.app.ui.settings
+
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.jarm.app.R
+import com.jarm.app.viewmodel.ChatViewModel
+
+/**
+ * Settings for the ways the assistant interrupts the user: right now the `ask_user` tool, which
+ * puts a decision back to the user instead of guessing at it.
+ */
+@Composable
+fun SettingsInteractionPage(viewModel: ChatViewModel, onBack: () -> Unit) {
+    val askUserEnabled by viewModel.settings.askUserEnabled.collectAsState()
+    val timeoutMinutes by viewModel.settings.askUserTimeoutMinutes.collectAsState()
+    SettingsInteractionContent(
+        askUserEnabled = askUserEnabled,
+        timeoutMinutes = timeoutMinutes,
+        onEnabledChange = viewModel.settings::setAskUserEnabled,
+        onTimeoutChange = viewModel.settings::setAskUserTimeoutMinutes,
+        onBack = onBack,
+    )
+}
+
+@Composable
+internal fun SettingsInteractionContent(
+    askUserEnabled: Boolean,
+    timeoutMinutes: Int,
+    onEnabledChange: (Boolean) -> Unit,
+    onTimeoutChange: (Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    val scrollState = rememberSettingsScrollState()
+    CollapsingSettingsScaffold(
+        title = stringResource(R.string.settings_interaction),
+        onBack = onBack,
+        scrollState = scrollState,
+    ) {
+        SettingsGroupColumn {
+            SettingsGroup(
+                title = stringResource(R.string.settings_interaction),
+                items = buildList {
+                    add {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.ask_user_enable)) },
+                            supportingContent = {
+                                Text(stringResource(R.string.ask_user_enable_desc))
+                            },
+                            leadingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.HelpOutline,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = askUserEnabled,
+                                    onCheckedChange = onEnabledChange,
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                onEnabledChange(!askUserEnabled)
+                            },
+                        )
+                    }
+                    add {
+                        InteractionTimeoutSlider(
+                            value = timeoutMinutes,
+                            onValueChange = onTimeoutChange,
+                        )
+                    }
+                },
+            )
+        }
+    }
+}

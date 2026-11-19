@@ -1,0 +1,591 @@
+package com.jarm.app.viewmodel
+
+import android.content.Context
+import androidx.work.WorkManager
+import com.jarm.app.R
+import com.jarm.app.api.ProviderDefaults
+import com.jarm.app.data.EmbeddingCacheLocks
+import com.jarm.app.data.EmbeddingModelConfig
+import com.jarm.app.data.EmbeddingModelType
+import com.jarm.app.data.local.SemanticIndexLedgerEntity
+import com.jarm.app.data.repository.ConversationRepository
+import com.jarm.app.data.repository.SettingsRepository
+import com.jarm.app.data.repository.awaitSemanticMetadataReady
+import com.jarm.app.data.repository.ensureSemanticMetadataState
+import com.jarm.app.service.EmbeddingCacheWorker
+import com.jarm.app.service.SemanticMetadataWorker
+import com.jarm.app.util.Constants
+import com.jarm.app.util.DebugLog
+import com.jarm.app.util.SnackbarEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+
+internal fun isEmbeddingMessageIdEligible(messageId: String): Boolean =
+    !messageId.startsWith(Constants.COMPACT_MSG_PREFIX) &&
+        !messageId.startsWith(Constants.TOOL_MSG_PREFIX) &&
+        !messageId.startsWith(Constants.RESULT_MSG_PREFIX)
+
+/**
+ * Owns embedding-model settings, semantic-ledger admission, durable worker scheduling,
+ * and the retained aggregate presentation used by Conversation Search settings.
+ * Embedding generation belongs only to [EmbeddingCacheWorker] and the read-only RAG query path.
+ */
+class RagManager(
+    private val conversations: ConversationRepository,
+    private val settings: SettingsRepository,
+    private val appContext: Context,
+    private val scope: CoroutineScope,
+    private val emitSnackbar: suspend (SnackbarEvent) -> Unit,
+) {
+    val activeEmbeddingModel: StateFlow<EmbeddingModelConfig?> =
+        combine(settings.embeddingModels, settings.activeEmbeddingModelId) { models, id ->
+            models.find { it.id == id }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
+
+    private val workManager = WorkManager.getInstance(appContext)
+    private val _cacheRows =
+        MutableStateFlow<Map<String, EmbeddingCacheRowSnapshot>>(emptyMap())
+    internal val cacheRows: StateFlow<Map<String, EmbeddingCacheRowSnapshot>> =
+        _cacheRows.asStateFlow()
+    private val scheduledCacheWorkIds =
+        java.util.concurrent.ConcurrentHashMap<String, java.util.UUID>()
+
+    @Volatile private var cacheCountRefreshJob: Job? = null
+    @Volatile private var pendingRefreshModels: List<EmbeddingModelConfig>? = null
+    private var refreshingModelIds: Set<String> = emptySet()
+    private var pendingRetryFailed = false
+    @Volatile private var cacheWorkObservationJob: Job? = null
+    @Volatile private var observedModelIds: Set<String> = emptySet()
+    private val cachePresentationSubscribers = mutableSetOf<Any>()
+    private var cacheCountsDirty = false
+    @Volatile private var postListStarted = false
+
+    @Synchronized
+    fun startPostList() {
+        if (postListStarted) return
+        postListStarted = true
+        scope.launch(Dispatchers.IO) {
+            settings.awaitInitialLoad()
+            schedulePendingMetadata()
+            val activeId = settings.activeEmbeddingModelId.value
+            if (settings.embeddingModels.value.any { it.id == activeId }) {
+                admitActiveModel(activeId)
+            }
+        }
+    }
+
+    /** Keeps aggregate work alive only while a settings page needs its presentation. */
+    suspend fun observeCachePresentation(): Nothing {
+        val subscriber = Any()
+        synchronized(this) { cachePresentationSubscribers.add(subscriber) }
+        try {
+            settings.awaitInitialLoad()
+            loadCacheCounts()
+            awaitCancellation()
+        } finally {
+            synchronized(this) {
+                cachePresentationSubscribers.remove(subscriber)
+                if (cachePresentationSubscribers.isEmpty()) {
+                    pendingRefreshModels = null
+                    pendingRetryFailed = false
+                    cacheCountsDirty = false
+                    cacheCountRefreshJob?.cancel()
+                    cacheWorkObservationJob?.cancel()
+                    cacheWorkObservationJob = null
+                    observedModelIds = emptySet()
+                }
+            }
+        }
+    }
+
+    fun loadCacheCounts() {
+        scope.launch(Dispatchers.IO) {
+            settings.awaitInitialLoad()
+            synchronized(this@RagManager) {
+                if (cachePresentationSubscribers.isEmpty()) return@launch
+                val models = settings.embeddingModels.value
+                observeCacheWork(models.mapTo(linkedSetOf(), EmbeddingModelConfig::id))
+                requestCacheCountRefresh(models = models, dataChanged = false, retryFailed = true)
+            }
+            settings.embeddingModels.value.forEach { model ->
+                runCatching {
+                    EmbeddingCacheWorker.repairLegacyChain(model.id, workManager)
+                }.onFailure { error ->
+                    if (error is CancellationException) throw error
+                    DebugLog.e(
+                        "RagManager",
+                        "Failed to repair legacy cache work for ${model.id}",
+                        error,
+                    )
+                }
+            }
+        }
+    }
+
+    @Synchronized
+    private fun requestCacheCountRefresh(
+        models: List<EmbeddingModelConfig> = settings.embeddingModels.value,
+        dataChanged: Boolean = true,
+        retryFailed: Boolean = false,
+    ) {
+        if (cachePresentationSubscribers.isEmpty()) return
+        val configuredIds = settings.embeddingModels.value.mapTo(linkedSetOf(), EmbeddingModelConfig::id)
+        pruneRemovedModels(configuredIds)
+        if (configuredIds.isEmpty()) {
+            pendingRefreshModels = null
+            pendingRetryFailed = false
+            cacheCountsDirty = false
+            return
+        }
+        if (_cacheRows.value.any { (id, row) -> id in configuredIds && row.workActive }) {
+            cacheCountsDirty = true
+            pendingRetryFailed = pendingRetryFailed || retryFailed
+            return
+        }
+        val retry = retryFailed || pendingRetryFailed
+        val eligibleModels = models.filter { model ->
+            val row = _cacheRows.value[model.id]
+            model.id in configuredIds && (retry || row?.countFailed != true || row.cached != null)
+        }
+        if (eligibleModels.isEmpty()) return
+        val modelIds = eligibleModels.mapTo(linkedSetOf(), EmbeddingModelConfig::id)
+        if (cacheCountRefreshJob != null) {
+            if (cacheCountRefreshJob?.isActive != true || dataChanged || modelIds != refreshingModelIds ||
+                retry && modelIds.any { _cacheRows.value[it]?.countFailed == true }) {
+                pendingRefreshModels = models
+                pendingRetryFailed = pendingRetryFailed || retry
+            }
+            return
+        }
+        cacheCountsDirty = false
+        pendingRetryFailed = false
+        refreshingModelIds = modelIds
+        lateinit var refreshJob: Job
+        refreshJob = scope.launch(
+            context = Dispatchers.IO,
+            start = CoroutineStart.LAZY,
+        ) {
+            _cacheRows.update { rows ->
+                modelIds.fold(rows) { current, modelId ->
+                    current + (modelId to EmbeddingCacheRowReducer.refreshRequested(current[modelId]))
+                }
+            }
+            try {
+                repeat(2) { attempt ->
+                    try {
+                        refreshCachePresentation(eligibleModels)
+                        return@launch
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        val unknown = modelIds.any { _cacheRows.value[it]?.cached == null }
+                        if (attempt == 1 || !unknown) {
+                            markCacheCountFailure(modelIds)
+                            DebugLog.e("RagManager", "Failed to refresh semantic cache presentation", error)
+                            return@launch
+                        }
+                    }
+                }
+            } finally {
+                _cacheRows.update { rows -> rows.mapValues { (id, row) ->
+                    if (id in modelIds) row.copy(countLoading = false) else row
+                } }
+                synchronized(this@RagManager) {
+                    val retryPending = pendingRetryFailed
+                    val pending = takePendingRefresh(refreshJob)
+                    pendingRetryFailed = false
+                    if (pending != null && scope.isActive && cachePresentationSubscribers.isNotEmpty()) {
+                        requestCacheCountRefresh(models = pending, retryFailed = retryPending)
+                    }
+                }
+            }
+        }
+        cacheCountRefreshJob = refreshJob
+        refreshJob.start()
+    }
+
+    private suspend fun refreshCachePresentation(models: List<EmbeddingModelConfig>) {
+        val requestedModelIds = models.map(EmbeddingModelConfig::id).toSet()
+        val configuredIds = settings.embeddingModels.value
+            .mapTo(linkedSetOf(), EmbeddingModelConfig::id)
+            .intersect(requestedModelIds)
+        if (configuredIds.isEmpty()) {
+            _cacheRows.update { it - requestedModelIds }
+            return
+        }
+        var snapshot = conversations.getEmbeddingCacheCounts(configuredIds.toList())
+        if (!snapshot.complete) {
+            SemanticMetadataWorker.schedule(workManager)
+            conversations.awaitSemanticMetadataReady()
+            snapshot = conversations.getEmbeddingCacheCounts(configuredIds.toList())
+            check(snapshot.complete) { "Semantic metadata is not ready after bootstrap completion" }
+        }
+        val total = snapshot.total
+        val stillConfigured = settings.embeddingModels.value
+            .mapTo(linkedSetOf(), EmbeddingModelConfig::id)
+            .intersect(configuredIds)
+        val counts = stillConfigured.associateWith { modelId ->
+            snapshot.cachedByModel.getValue(modelId) to total
+        }
+        check(total >= 0 && counts.values.all { it.first in 0..total })
+        _cacheRows.update { current ->
+            stillConfigured.fold(current - requestedModelIds) { rows, modelId ->
+                val count = checkNotNull(counts[modelId])
+                rows + (
+                    modelId to EmbeddingCacheRowReducer.refreshed(
+                        previous = current[modelId],
+                        cached = count.first,
+                        total = count.second,
+                    )
+                )
+            }
+        }
+    }
+
+    private fun markCacheCountFailure(modelIds: Set<String>) {
+        val configuredIds = settings.embeddingModels.value
+            .mapTo(linkedSetOf(), EmbeddingModelConfig::id)
+        _cacheRows.update { current ->
+            (modelIds intersect configuredIds).fold(current) { rows, modelId ->
+                rows + (modelId to EmbeddingCacheRowReducer.refreshFailed(rows[modelId]))
+            }
+        }
+    }
+
+    @Synchronized
+    private fun takePendingRefresh(completedJob: Job): List<EmbeddingModelConfig>? {
+        if (cacheCountRefreshJob !== completedJob) return null
+        cacheCountRefreshJob = null
+        refreshingModelIds = emptySet()
+        return pendingRefreshModels.also { pendingRefreshModels = null }
+    }
+
+    private fun pruneRemovedModels(modelIds: Set<String>) {
+        _cacheRows.update { rows -> rows.filterKeys { it in modelIds } }
+        scheduledCacheWorkIds.keys.retainAll(modelIds)
+    }
+
+    @Synchronized
+    private fun observeCacheWork(modelIds: Set<String>) {
+        if (cachePresentationSubscribers.isEmpty()) return
+        if (cacheWorkObservationJob?.isActive == true && observedModelIds == modelIds) return
+        cacheWorkObservationJob?.cancel()
+        observedModelIds = modelIds
+        if (modelIds.isEmpty()) {
+            cacheWorkObservationJob = null
+            return
+        }
+        cacheWorkObservationJob = scope.launch(Dispatchers.IO) {
+            coroutineScope {
+                modelIds.forEach { modelId ->
+                    launch {
+                        var previousActiveIds = emptySet<java.util.UUID>()
+                        workManager.getWorkInfosForUniqueWorkFlow(
+                            EmbeddingCacheWorker.workNameFor(modelId),
+                        ).collect { infos ->
+                            val active = currentCoroutineContext().isActive
+                            synchronized(this@RagManager) {
+                                if (cachePresentationSubscribers.isEmpty() || !active ||
+                                    settings.embeddingModels.value.none { it.id == modelId }) {
+                                    return@collect
+                                }
+                                val unfinished = infos.filter { !it.state.isFinished }
+                                val activeIds = unfinished.mapTo(linkedSetOf()) { it.id }
+                                val running = unfinished.firstOrNull {
+                                    it.state == androidx.work.WorkInfo.State.RUNNING
+                                }
+                                val wasActive = _cacheRows.value[modelId]?.workActive == true
+                                _cacheRows.update { rows ->
+                                    rows + (modelId to EmbeddingCacheRowReducer.workChanged(
+                                        rows[modelId], unfinished.isNotEmpty(), running?.cacheProgressOrNull(),
+                                    ))
+                                }
+                                val scheduledId = scheduledCacheWorkIds[modelId]
+                                val scheduledFinished = scheduledId != null && infos.any {
+                                    it.id == scheduledId && it.state.isFinished
+                                }
+                                if (scheduledFinished) scheduledCacheWorkIds.remove(modelId, scheduledId)
+                                if (wasActive || scheduledFinished || previousActiveIds.any { it !in activeIds }) {
+                                    cacheCountsDirty = true
+                                }
+                                previousActiveIds = activeIds
+                                // A predecessor finishing does not make its unfinished follower idle.
+                                if (cacheCountsDirty && _cacheRows.value.none { it.value.workActive }) {
+                                    requestCacheCountRefresh()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun androidx.work.WorkInfo.cacheProgressOrNull(): EmbeddingCacheWorkSnapshot? {
+        val data = progress
+        if (data.getString(EmbeddingCacheWorker.KEY_GENERATION_KIND) != "EXACT") return null
+        return embeddingCacheWorkSnapshotOrNull(
+            generationRevision = data.getLong(EmbeddingCacheWorker.KEY_GENERATION_REVISION, -1L),
+            kind = data.getString(EmbeddingCacheWorker.KEY_GENERATION_KIND),
+            processed = data.getInt(EmbeddingCacheWorker.KEY_PROCESSED, -1),
+            total = data.getInt(EmbeddingCacheWorker.KEY_WORK_TOTAL, -1),
+            remaining = data.getInt(EmbeddingCacheWorker.KEY_REMAINING, -1),
+            progressPermille = data.getInt(EmbeddingCacheWorker.KEY_PROGRESS_PERMILLE, -1),
+        )
+    }
+
+    private suspend fun emitUncachedReminder(modelId: String, ledgerState: String?) {
+        val shouldNotify = EmbeddingCacheLocks.forModel(modelId).withLock {
+            settings.embeddingModels.value.any { it.id == modelId } &&
+                ledgerState != null && ledgerState != SemanticIndexLedgerEntity.STATE_CURRENT &&
+                settings.activeEmbeddingModelId.value == modelId &&
+                !settings.getAutoCacheEnabled() && settings.getShowUncachedNotification()
+        }
+        if (shouldNotify) {
+            emitSnackbar(SnackbarEvent(
+                appContext.getString(R.string.not_cached), appContext.getString(R.string.cache_now),
+            ) { cacheMessagesForModel(modelId) })
+        }
+    }
+
+    // -- Embedding-model CRUD ---------------------------------------------------------------
+
+    fun addEmbeddingModel(config: EmbeddingModelConfig) {
+        scope.launch(Dispatchers.IO) {
+            settings.awaitInitialLoad()
+            val wasEmpty = settings.embeddingModels.value.isEmpty()
+            val models = settings.embeddingModels.value + config
+            settings.saveEmbeddingModels(models)
+            var added = false
+            EmbeddingCacheLocks.forModel(config.id).withLock {
+                if (settings.embeddingModels.value.any { it.id == config.id }) {
+                    conversations.invalidateSemanticModel(config.id)
+                    if (wasEmpty) settings.setActiveEmbeddingModelId(config.id)
+                    added = true
+                }
+            }
+            if (!added) return@launch
+            if (wasEmpty) admitActiveModel(config.id)
+            val currentModels = settings.embeddingModels.value
+            observeCacheWork(currentModels.mapTo(linkedSetOf(), EmbeddingModelConfig::id))
+            requestCacheCountRefresh(models = currentModels)
+        }
+    }
+
+    fun deleteEmbeddingModel(id: String) {
+        val workName = EmbeddingCacheWorker.workNameFor(id)
+        workManager.cancelUniqueWork(workName)
+        scope.launch(Dispatchers.IO) {
+            withTimeoutOrNull(10_000) {
+                workManager.getWorkInfosForUniqueWorkFlow(workName)
+                    .first { infos -> infos.all { it.state.isFinished } }
+            }
+            var nextActiveModelId: String? = null
+            val remainingModels = EmbeddingCacheLocks.forModel(id).withLock {
+                val model = settings.embeddingModels.value.find { it.id == id }
+                if (model?.type == EmbeddingModelType.LOCAL && model.localFilePath.isNotBlank()) {
+                    java.io.File(model.localFilePath).delete()
+                }
+                conversations.deleteSemanticModel(id)
+                val models = settings.embeddingModels.value.filter { it.id != id }
+                settings.saveEmbeddingModels(models)
+                if (settings.activeEmbeddingModelId.value == id && models.isNotEmpty()) {
+                    nextActiveModelId = models.first().id
+                    settings.setActiveEmbeddingModelId(models.first().id)
+                }
+                models
+            }
+            nextActiveModelId?.let { admitActiveModel(it) }
+            observeCacheWork(remainingModels.mapTo(linkedSetOf(), EmbeddingModelConfig::id))
+            requestCacheCountRefresh(models = remainingModels)
+        }
+    }
+
+    /**
+     * Updates the user-editable fields of an embedding model. The model id, endpoint and
+     * local file stay fixed because cached vectors belong to that exact model.
+     */
+    fun updateEmbeddingModel(id: String, newName: String, batchSize: Int? = null, remoteApiKey: String? = null) {
+        scope.launch(Dispatchers.IO) {
+            EmbeddingCacheLocks.forModel(id).withLock {
+                val models = settings.embeddingModels.value.map {
+                    if (it.id == id) {
+                        it.copy(
+                            name = newName,
+                            batchSize = batchSize ?: it.batchSize,
+                            remoteApiKey = remoteApiKey ?: it.remoteApiKey,
+                        )
+                    } else {
+                        it
+                    }
+                }
+                settings.saveEmbeddingModels(models)
+            }
+        }
+    }
+
+    fun setActiveEmbeddingModel(id: String) {
+        if (id == settings.activeEmbeddingModelId.value) return
+        scope.launch(Dispatchers.IO) {
+            EmbeddingCacheLocks.forModel(id).withLock {
+                if (settings.embeddingModels.value.none { it.id == id }) return@withLock
+                settings.setActiveEmbeddingModelId(id)
+            }
+            admitActiveModel(id)
+        }
+    }
+
+    fun setAutoCacheEnabled(enabled: Boolean) {
+        settings.setAutoCacheEnabled(enabled)
+        if (!enabled) return
+        scope.launch(Dispatchers.IO) {
+            settings.awaitInitialLoad()
+            val activeId = settings.activeEmbeddingModelId.value
+            if (settings.embeddingModels.value.any { it.id == activeId }) {
+                admitActiveModel(activeId, autoCacheOverride = true)
+            }
+        }
+    }
+
+    // -- Semantic ledger and durable cache work --------------------------------------------
+
+    /**
+     * Schedules the cache work for one model. No snackbar: the row's own CACHING state is the
+     * feedback, and a message repeating it can only drift from what the row shows.
+     */
+    fun cacheMessagesForModel(modelId: String, recache: Boolean = false) {
+        scope.launch(Dispatchers.IO) {
+            settings.awaitInitialLoad()
+            val needsWork = EmbeddingCacheLocks.forModel(modelId).withLock {
+                if (settings.embeddingModels.value.none { it.id == modelId }) return@withLock false
+                if (recache) conversations.invalidateSemanticModel(modelId)
+                val state = conversations.getOrAdmitSemanticLedgerState(modelId)
+                recache || state != SemanticIndexLedgerEntity.STATE_CURRENT
+            }
+            if (!needsWork) return@launch
+            if (!scheduleCacheWork(modelId)) return@launch
+            val models = settings.embeddingModels.value
+            observeCacheWork(models.mapTo(linkedSetOf(), EmbeddingModelConfig::id))
+            requestCacheCountRefresh(models = models)
+        }
+    }
+
+    private suspend fun admitActiveModel(
+        modelId: String,
+        autoCacheOverride: Boolean? = null,
+    ) {
+        var reminderState: String? = null
+        val shouldSchedule = EmbeddingCacheLocks.forModel(modelId).withLock {
+            if (settings.embeddingModels.value.none { it.id == modelId }) return@withLock false
+            val state = conversations.getOrAdmitSemanticLedgerState(modelId)
+            if (state == SemanticIndexLedgerEntity.STATE_CURRENT) return@withLock false
+            if (autoCacheOverride ?: settings.getAutoCacheEnabled()) {
+                true
+            } else {
+                reminderState = state
+                false
+            }
+        }
+        if (shouldSchedule) scheduleCacheWork(modelId)
+        else reminderState?.let { emitUncachedReminder(modelId, it) }
+    }
+
+    private suspend fun schedulePendingMetadata() {
+        try {
+            if (!conversations.ensureSemanticMetadataState().complete) {
+                SemanticMetadataWorker.schedule(workManager)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            DebugLog.e("RagManager", "Failed to schedule semantic metadata bootstrap", error)
+        }
+    }
+
+    private suspend fun scheduleCacheWork(modelId: String): Boolean {
+        return runCatching {
+            if (settings.embeddingModels.value.none { it.id == modelId }) return false
+            if (conversations.getSemanticLedgers(listOf(modelId)).none { it.modelId == modelId }) return false
+            schedulePendingMetadata()
+            if (settings.embeddingModels.value.none { it.id == modelId }) return false
+            EmbeddingCacheWorker.schedule(modelId, workManager) {
+                if (settings.embeddingModels.value.any { model -> model.id == modelId }) {
+                    scheduledCacheWorkIds[modelId] = it
+                }
+            }
+            if (settings.embeddingModels.value.none { it.id == modelId }) {
+                scheduledCacheWorkIds.remove(modelId)
+                return false
+            }
+            true
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            scheduledCacheWorkIds.remove(modelId)
+            DebugLog.e("RagManager", "Failed to schedule semantic cache work for $modelId", error)
+            false
+        }
+    }
+    /**
+     * Searchable message persistence already enqueues exact ledger work transactionally.
+     * This callback only wakes the one durable consumer when Auto Cache is enabled.
+     */
+    fun indexMessageForRag(messageId: String, @Suppress("UNUSED_PARAMETER") text: String) {
+        if (!isEmbeddingMessageIdEligible(messageId) || !settings.autoCacheEnabled.value) return
+        activeEmbeddingModel.value?.id?.let { modelId ->
+            scope.launch(Dispatchers.IO) {
+                if (
+                    settings.autoCacheEnabled.value &&
+                    settings.embeddingModels.value.any { it.id == modelId }
+                ) {
+                    // Enqueueing is a wake-up, not a cache mutation, and must never wait behind
+                    // remote/JNI embedding work.
+                    scheduleCacheWork(modelId)
+                }
+            }
+        }
+    }
+
+    // -- Embedding key / base-URL resolution ------------------------------------------------
+
+    fun resolveEmbeddingApiKey(): String? {
+        val keys = settings.apiKeys.value
+        for (entry in keys) {
+            if (ProviderDefaults.isOpenAiCompatibleEmbedding(entry.provider)) return entry.key
+        }
+        return keys.firstOrNull()?.key
+    }
+
+    fun resolveEmbeddingBaseUrl(): String =
+        ProviderDefaults.openAiCompatibleBaseUrl(settings.providerBaseUrls.value)
+
+    data class EmbeddingKeyInfo(val provider: String, val key: String, val baseUrl: String)
+
+    /** Exact match only -- for UI display in the embedding dialog. No fallback. */
+    fun resolveEmbeddingKeyForProviderExact(targetProvider: String): EmbeddingKeyInfo? {
+        val match = settings.apiKeys.value.find {
+            it.provider.equals(targetProvider, ignoreCase = true)
+        } ?: return null
+        val baseUrl = settings.providerBaseUrls.value[match.provider]
+            ?: ProviderDefaults.embeddingBaseUrl(match.provider)
+        return EmbeddingKeyInfo(match.provider, match.key, baseUrl)
+    }
+}

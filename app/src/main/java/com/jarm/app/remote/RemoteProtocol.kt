@@ -1,0 +1,107 @@
+package com.jarm.app.remote
+
+import com.jarm.app.data.inferModelAlias
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+@Serializable
+internal data class RemoteSession(
+    val id: String, val title: String, val cwd: String, val updatedAt: Long,
+    val status: String? = null,
+    @kotlinx.serialization.Transient val listCursor: String? = null,
+    @kotlinx.serialization.Transient val acceptedTurnId: String? = null,
+    val access: RemoteSessionAccess? = null,
+)
+@Serializable
+internal data class RemoteSessionStatus(
+    val id: String, val status: String? = null, val activeTurnId: String? = null,
+    val completedTurnId: String? = null, val hasUnreadTurn: Boolean = false,
+)
+@Serializable
+internal data class RemoteMessage(
+    val id: String, val turnId: String, val clientId: String?, val role: String,
+    val text: String, val timestamp: Long?,
+    val activity: RemoteActivity? = null,
+    val groupId: String? = null,
+    val nativeId: String? = null, val textOffset: Int = 0, val textContinues: Boolean = false,
+    @kotlinx.serialization.Transient
+    val streamingTextDeltas: List<com.jarm.app.model.StreamingTextDelta> = emptyList(),
+    val imageLinks: List<String> = emptyList(),
+    @kotlinx.serialization.Transient
+    val inlineImages: Map<String, com.jarm.app.model.MarkdownImage> = emptyMap(),
+    val error: Boolean = false,
+)
+@Serializable
+internal data class RemoteActivity(
+    val type: String, val toolName: String? = null, val arguments: String? = null,
+    val result: String? = null, val state: String? = null, val durationMs: Long? = null,
+    val imagePath: String? = null,
+    @kotlinx.serialization.Transient
+    val images: List<com.jarm.app.model.ToolImageAttachment> = emptyList(),
+)
+@Serializable
+internal data class RemoteQueuedMessage(val id: String, val clientId: String, val text: String)
+@Serializable
+internal data class RemoteSessionPage(
+    val sessions: List<RemoteSession>, val nextCursor: String?,
+    val statuses: List<RemoteSessionStatus> = emptyList(),
+)
+@Serializable
+internal data class RemoteConversationPage(
+    val messages: List<RemoteMessage>, val nextCursor: String?, val queued: List<RemoteQueuedMessage>,
+    val runtime: RemoteRuntime? = null, val pageCursor: String? = null,
+    val continuationCursor: String? = null,
+    val nodes: List<RemoteMessageNode> = emptyList(),
+    val inputReceipts: List<RemoteInputReceipt> = emptyList(),
+    val access: RemoteSessionAccess? = null,
+)
+/** Input confirmed by the native owner, independent of bounded presentation pages. */
+@Serializable
+internal data class RemoteInputReceipt(val clientId: String, val turnId: String = "", val messageId: String = "",
+    val kind: String = "", val state: String = "")
+@Serializable
+internal data class RemoteRuntime(
+    val status: String, val activeTurnId: String? = null, val model: String? = null,
+    val contextTokens: Int? = null, val contextWindow: Int? = null,
+    val completedTurnId: String? = null,
+    val effort: String? = null, val serviceTier: String? = null,
+    val serviceTierKnown: Boolean = false, val activeTurnHasUserMessage: Boolean = false,
+    val settingsChange: RemoteSettingsChange? = null,
+    val title: String? = null,
+) { val isRunning: Boolean get() = status == "active" || status == "running" }
+@Serializable
+internal data class RemoteModel(
+    val id: String, val name: String, val isDefault: Boolean = false,
+    val reasoningEfforts: List<String>? = null, val defaultReasoningEffort: String? = null,
+    val serviceTiers: List<RemoteServiceTier>? = null, val defaultServiceTier: String? = null,
+) {
+    fun displayName(family: String): String = name.takeIf(String::isNotBlank)?.let {
+        if (family == "codex") it.replace('-', ' ') else it
+    } ?: inferModelAlias(id)
+}
+@Serializable
+internal data class RemoteServiceTier(val id: String, val name: String, val description: String = "")
+@Serializable
+internal data class RemoteSettingsChange(
+    val id: String, val state: String, val requested: RemoteSettings,
+    val actualModel: String = "", val actualEffort: String = "", val turnId: String = "",
+)
+@Serializable
+internal data class RemoteSendReceipt(
+    val turnId: String = "", val clientId: String, val kind: String = "", val state: String = "",
+    val messageId: String = "",
+)
+@Serializable
+internal data class RemoteSettings(
+    val model: String? = null, val effort: String? = null,
+    val serviceTier: String? = null, val updateServiceTier: Boolean = false,
+) {
+    fun merge(patch: RemoteSettings) = RemoteSettings(patch.model ?: model, patch.effort ?: effort,
+        if (patch.updateServiceTier) patch.serviceTier else serviceTier, updateServiceTier || patch.updateServiceTier)
+    fun body(): String = buildJsonObject {
+        model?.let { put("model", it) }; effort?.let { put("effort", it) }
+        if (updateServiceTier) put("serviceTier", serviceTier?.let { kotlinx.serialization.json.JsonPrimitive(it) } ?: JsonNull)
+    }.toString()
+}
