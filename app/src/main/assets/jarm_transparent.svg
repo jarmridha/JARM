@@ -1,14 +1,27 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 240 240">
-  <!-- Generator: Adobe Illustrator 30.2.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 1)  -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <style>
-      .st0 {
-        fill: #fff;
-      }
-    </style>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#122048"/>
+      <stop offset="1" stop-color="#0B1437"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#FFD36B"/>
+      <stop offset="0.55" stop-color="#FFB020"/>
+      <stop offset="1" stop-color="#F5820B"/>
+    </linearGradient>
+    <clipPath id="tile"><rect x="112" y="112" width="800" height="800" rx="200" ry="200"/></clipPath>
   </defs>
-  <path class="st0" d="M79.7,162.1l23.8-84.1h12.8l-23.8,84.1h-12.8Z"/>
-  <path class="st0" d="M160.3,162.1l-23.8-84.1h-12.8l23.8,84.1h12.8Z"/>
-  <circle class="st0" cx="120" cy="129.1" r="9.1"/>
+  <g clip-path="url(#tile)">
+    <rect x="112" y="112" width="800" height="800" fill="url(#navy)"/>
+  </g>
+  <!-- J hook -->
+  <path fill="url(#gold)" d="M560 300 h118 c14 0 25 11 25 25 v205 c0 105 -78 175 -185 175 -80 0 -142 -40 -162 -105 l-12 -40 88 -30 18 34 c7 22 30 38 68 38 55 0 92 -35 92 -95 v-177 c0 -14 -11 -25 -25 -25 h-28 v-100 z"/>
+  <!-- A: left leg -->
+  <polygon fill="url(#gold)" points="392,706 470,312 545,312 487,706"/>
+  <!-- A: right leg -->
+  <polygon fill="url(#gold)" points="601,706 543,312 618,312 702,706 640,706 588,506 574,506 539,706"/>
+  <!-- crossbar -->
+  <rect fill="url(#gold)" x="452" y="506" width="232" height="62" rx="18"/>
+  <!-- spark node -->
+  <circle cx="682" cy="537" r="34" fill="#FFF3D6"/>
 </svg>

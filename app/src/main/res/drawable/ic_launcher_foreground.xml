@@ -1,16 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="240"
-    android:viewportHeight="240">
-    <path
-        android:fillColor="#000000"
-        android:pathData="M79.7,162.1l23.8-84.1h12.8l-23.8,84.1h-12.8Z"/>
-    <path
-        android:fillColor="#000000"
-        android:pathData="M160.3,162.1l-23.8-84.1h-12.8l23.8,84.1h12.8Z"/>
-    <path
-        android:fillColor="#000000"
-        android:pathData="M120,129.1m-9.1,0a9.1,9.1 0,1,1 18.2,0a9.1,9.1 0,1,1 -18.2,0"/>
-</vector>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- JARM adaptive-icon foreground: monogram only, sized to safe zone -->
+  <g fill="#FFB020">
+    <!-- J: top bar -->
+    <rect x="213" y="127" width="72" height="56" rx="22"/>
+    <!-- J: stem -->
+    <rect x="246" y="183" width="39" height="144" rx="8"/>
+    <!-- J: bowl -->
+    <ellipse cx="198" cy="342" rx="82" ry="60"/>
+    <!-- A: right stem -->
+    <rect x="289" y="127" width="36" height="237" rx="15"/>
+    <!-- A: left stem -->
+    <rect x="232" y="151" width="27" height="213" rx="12"/>
+    <!-- crossbar -->
+    <rect x="236" y="256" width="86" height="26" rx="13"/>
+  </g>
+  <circle cx="320" cy="261" r="26" fill="#FFF3D6"/>
+</svg>
