@@ -224,7 +224,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/jarm-dev/JARM") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/jarmridha/JARM") }
                 )
             }, {
                 SettingsItem(
@@ -237,7 +237,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/jarm-dev/JARM/issues") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/jarmridha/JARM/issues") }
                 )
             }, {
                 SettingsItem(
@@ -250,7 +250,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/jarm-dev/JARM/pulls") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/jarmridha/JARM/pulls") }
                 )
             }, {
                 SettingsItem(
@@ -263,7 +263,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/jarm-dev/JARM/blob/master/PRIVACY.md") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/jarmridha/JARM/blob/master/PRIVACY.md") }
                 )
             }, {
                 SettingsItem(

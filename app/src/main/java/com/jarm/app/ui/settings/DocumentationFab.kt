@@ -16,7 +16,7 @@ fun DocumentationFab(docPath: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
     val langTag = locale.toLanguageTag()
-    val baseUrl = "https://jarm-dev.github.io/jarm/"
+    val baseUrl = "https://jarmridha.github.io/jarm/"
     // Map the resolved locale to the docs URL prefix.
     // "en" and anything unrecognised → root (English); each supported
     // language maps to its own subdirectory under the docs site.

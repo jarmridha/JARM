@@ -22,7 +22,7 @@ import com.jarm.app.R
 import com.jarm.app.ui.components.clearFocusOnTap
 
 private const val LICENSE_ASSET = "licenses/LICENSE-GPL-3.0.txt"
-private const val LICENSE_URL = "https://github.com/jarm-dev/JARM/blob/master/LICENSE"
+private const val LICENSE_URL = "https://github.com/jarmridha/JARM/blob/master/LICENSE"
 
 /**
  * Shows the license text that ships inside the APK, so a recipient can read it without

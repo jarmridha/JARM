@@ -9,7 +9,7 @@
   [![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
   [![Kotlin](https://img.shields.io/badge/Kotlin-Native-blue.svg)](https://kotlinlang.org/)
 
-  [Website](https://jarm.example.com) · [User Manual](https://jarm-dev.github.io/jarm/)
+  [Website](https://jarm.example.com) · [User Manual](https://jarmridha.github.io/jarm/)
 
   <img src="assets/feature_graphic.png" alt="JARM — A BYOK AI app that takes back your data sovereignty." width="100%" />
 </div>
@@ -24,7 +24,7 @@ JARM is an open-source Android client for using your own model accounts and endp
 &nbsp;&nbsp;
 [![Google Play](https://img.shields.io/badge/Google_Play-Install-blue?logo=google-play)](https://play.google.com/store/apps/details?id=com.jarm.app)
 &nbsp;&nbsp;
-[![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-blue?logo=github)](https://github.com/jarm-dev/JARM/releases)
+[![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-blue?logo=github)](https://github.com/jarmridha/JARM/releases)
 
 ## Screenshots
 
@@ -50,7 +50,7 @@ Conch application-layer encryption is enabled when an API key is configured. A b
 
 ## Documentation
 
-- \U0001F4D6 **[User Manual](https://jarm-dev.github.io/jarm/)** — 28 maintained manual pages covering setup, providers, Context Compact, MCP, automation, tools, privacy, and data management.
+- \U0001F4D6 **[User Manual](https://jarmridha.github.io/jarm/)** — 28 maintained manual pages covering setup, providers, Context Compact, MCP, automation, tools, privacy, and data management.
 - \U0001F3D7\ufe0f **[Architecture Guide](ARCHITECTURE.md)** — current runtime, persistence, providers, tools, and data flows.
 - \U0001F9E0 **[Development documentation](development/documentation-maintenance.md)** — internal contracts, baselines, and documentation-maintenance policy.
 
@@ -63,7 +63,7 @@ Public manuals live under `docs/<locale>/`. Internal engineering documents live 
 3. Sync and enable models under **Models**.
 4. Select a model from the chat bottom bar and send a message.
 
-See the [Getting Started manual](https://jarm-dev.github.io/jarm/getting-started/).
+See the [Getting Started manual](https://jarmridha.github.io/jarm/getting-started/).
 
 ### Build from source
 
@@ -77,7 +77,7 @@ Kotlin, Jetpack Compose Material 3, Coroutines/Flow, Room, DataStore, OkHttp/SSE
 
 JARM does not relay chat completions or run general analytics. Conversations remain in app-managed local storage, while configured providers and tools are contacted directly when used. Optional update checks and explicitly submitted ratings have documented network destinations. After a crash, one report is kept locally and is sent only if the user confirms on the next launch; it contains diagnostics but no conversation text or credentials. Secret settings normally use an Android Keystore AES-GCM envelope, but legacy values and a deliberate encryption-failure fallback can remain plaintext in DataStore; exported secrets are also unencrypted inside a selected `.jarm` archive.
 
-Read [Privacy & Security](https://jarm-dev.github.io/jarm/privacy/) and the repository [Privacy Policy](PRIVACY.md).
+Read [Privacy & Security](https://jarmridha.github.io/jarm/privacy/) and the repository [Privacy Policy](PRIVACY.md).
 
 ## Contributing and license
 

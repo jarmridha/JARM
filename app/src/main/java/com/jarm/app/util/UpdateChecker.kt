@@ -36,7 +36,7 @@ object UpdateChecker {
     suspend fun check(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
-                .url("https://api.github.com/repos/jarm-dev/JARM/releases/latest")
+                .url("https://api.github.com/repos/jarmridha/JARM/releases/latest")
                 .header("Accept", "application/vnd.github+json")
                 .build()
 

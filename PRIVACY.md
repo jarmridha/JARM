@@ -42,4 +42,4 @@ The configured proxy applies to JARM's shared HTTP-client traffic, not direct SS
 
 ## Children, changes, and contact
 
-JARM is not directed to children under 13. This policy may be updated with the repository/application. Questions can be opened at [github.com/jarm-dev/JARM](https://github.com/jarm-dev/JARM).
+JARM is not directed to children under 13. This policy may be updated with the repository/application. Questions can be opened at [github.com/jarmridha/JARM](https://github.com/jarmridha/JARM).

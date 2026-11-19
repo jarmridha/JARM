@@ -204,9 +204,9 @@ CMake targets: `jarm_llama`, `jarm_proot` (renamed from `agora_*`).
 | App name | JARM |
 | Package / Application ID | `com.jarm.app` |
 | GitHub org (placeholder) | `jarm-dev` |
-| GitHub repo (placeholder) | `jarm-dev/JARM` |
+| GitHub repo (placeholder) | `jarmridha/JARM` |
 | Website (placeholder) | `https://jarm.example.com` |
-| User manual (placeholder) | `https://jarm-dev.github.io/jarm/` |
+| User manual (placeholder) | `https://jarmridha.github.io/jarm/` |
 | License | GPL-3.0 |
 | Version | 2.3.0 (versionCode 33) |
 | minSdk / targetSdk | 26 / 36 |
@@ -214,7 +214,7 @@ CMake targets: `jarm_llama`, `jarm_proot` (renamed from `agora_*`).
 | NDK | 28.2.13676358 |
 | JDK | 21 |
 
-> **Note:** All placeholder URLs (`jarm.example.com`, `jarm-dev.github.io/jarm`)
+> **Note:** All placeholder URLs (`jarm.example.com`, `jarmridha.github.io/jarm`)
 > must be replaced with real endpoints before public release.
 
 ---

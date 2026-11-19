@@ -138,7 +138,7 @@ private fun InstallationGuide(conch: Boolean, platform: Int, onPlatform: (Int) -
                 modifier = Modifier.testTag("$prefix-project"),
                 items = listOf {
                     InstallSourceLink(
-                        if (conch) "https://github.com/jarm-dev/conch" else "https://github.com/jarm-dev/filo",
+                        if (conch) "https://github.com/jarmridha/conch" else "https://github.com/jarmridha/filo",
                         active, "$prefix-source",
                     )
                 },

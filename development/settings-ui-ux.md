@@ -576,7 +576,7 @@ in the existing editor. Source links retain the established external-link icon a
 ## Rating upstream attribution
 
 - The shared RatingForm always identifies JARM and jarm-dev and offers an explicit link to
-  https://github.com/jarm-dev/JARM. Both About and the scheduled rating dialog use this owner.
+  https://github.com/jarmridha/JARM. Both About and the scheduled rating dialog use this owner.
 - Compare the actual runtime package against the independently Base64-encoded upstream package
   com.jarm.app. Do not derive the expected identity from BuildConfig or the current app ID.
 - A mismatch displays a neutral, bold Modified Version heading and localized explanation above

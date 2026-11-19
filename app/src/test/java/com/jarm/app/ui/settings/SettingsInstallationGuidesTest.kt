@@ -152,7 +152,7 @@ class SettingsInstallationGuidesTest {
         compose.onNodeWithTag("conch-guide-return").assertDoesNotExist()
         compose.onNodeWithTag("conch-guide-source")
             .assert(hasAnyAncestor(hasTestTag("conch-guide-project")))
-            .assertTextContains("github.com/jarm-dev/conch")
+            .assertTextContains("github.com/jarmridha/conch")
         compose.onNodeWithText(strings.getValue(R.string.install_guide_purpose)).assertExists()
         compose.onNodeWithText(strings.getValue(R.string.install_guide_install)).assertExists()
         compose.onNodeWithText(strings.getValue(R.string.install_guide_project_address)).assertExists()
@@ -188,7 +188,7 @@ class SettingsInstallationGuidesTest {
             .assert(hasAnyDescendant(hasText(strings.getValue(R.string.filo_guide_description))))
         compose.onNodeWithTag("filo-guide-source")
             .assert(hasAnyAncestor(hasTestTag("filo-guide-project")))
-            .assertTextContains("github.com/jarm-dev/filo")
+            .assertTextContains("github.com/jarmridha/filo")
         compose.onNodeWithTag("filo-guide-installation").assertExists()
         compose.onNodeWithText("1").assertExists()
         compose.onNodeWithText("2").assertExists()
@@ -240,7 +240,7 @@ class SettingsInstallationGuidesTest {
         compose.runOnIdle { assertTrue(openedUrls.isEmpty()) }
         compose.onNodeWithTag("filo-guide-source").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(listOf("https://github.com/jarm-dev/filo"), openedUrls)
+            assertEquals(listOf("https://github.com/jarmridha/filo"), openedUrls)
             missingBrowser = true
         }
         compose.onNodeWithTag("filo-guide-source").performClick()

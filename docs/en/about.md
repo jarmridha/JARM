@@ -16,8 +16,8 @@ For data handling and network destinations, see [Privacy & Security](privacy.md)
 
 ## License
 
-JARM v2.2.0 and later are released under the [GNU General Public License v3.0](https://github.com/jarm-dev/JARM/blob/master/LICENSE).
+JARM v2.2.0 and later are released under the [GNU General Public License v3.0](https://github.com/jarmridha/JARM/blob/master/LICENSE).
 
-Versions up to v2.1.0 remain available under their [original MIT License](https://github.com/jarm-dev/JARM/blob/9fc92fc3518c880158111ae1e9534ed8ffd09c6d/LICENSE). This is a version-based license history, not a choice of MIT or GPL for the current project.
+Versions up to v2.1.0 remain available under their [original MIT License](https://github.com/jarmridha/JARM/blob/9fc92fc3518c880158111ae1e9534ed8ffd09c6d/LICENSE). This is a version-based license history, not a choice of MIT or GPL for the current project.
 
-The complete corresponding source is the public repository at [github.com/jarm-dev/JARM](https://github.com/jarm-dev/JARM), which the **About** screen also links to. Redistributors must keep the copyright and license notices, state that they changed the files, and make the corresponding source available under the same license.
+The complete corresponding source is the public repository at [github.com/jarmridha/JARM](https://github.com/jarmridha/JARM), which the **About** screen also links to. Redistributors must keep the copyright and license notices, state that they changed the files, and make the corresponding source available under the same license.

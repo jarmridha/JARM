@@ -1,8 +1,8 @@
 site_name: JARM User Manual
 site_description: Guide for configuring and using JARM
-site_url: https://jarm-dev.github.io/jarm/
-repo_url: https://github.com/jarm-dev/JARM
-repo_name: jarm-dev/JARM
+site_url: https://jarmridha.github.io/jarm/
+repo_url: https://github.com/jarmridha/JARM
+repo_name: jarmridha/JARM
 
 theme:
   name: material
