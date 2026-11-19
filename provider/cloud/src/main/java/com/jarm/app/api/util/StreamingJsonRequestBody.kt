@@ -133,7 +133,7 @@ internal class Base64FileRegistry {
         synchronized(lock) { check(!sealed) { "Image registry is already prepared" } }
         val file = imageArtifactFile(artifact) ?: return null
         val snapshot = readImageSnapshot(file) ?: return null
-        val image = RegisteredImage("__AGORA_BASE64_${UUID.randomUUID()}__", snapshot.mimeType)
+        val image = RegisteredImage("__JARM_BASE64_${UUID.randomUUID()}__", snapshot.mimeType)
         synchronized(lock) {
             check(!sealed) { "Image registry is already prepared" }
             files += FilePart(image, file, snapshot.bytes.size)

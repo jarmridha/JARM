@@ -41,7 +41,7 @@ import com.jarm.app.ui.components.JARMDropdownMenu
 import com.jarm.app.ui.components.JARMDropdownMenuItem
 import com.jarm.app.ui.components.sheetOptionClickable
 
-private const val DUPLICATE_TITLE_TOKEN = "__AGORA_PROMPT_TITLE__"
+private const val DUPLICATE_TITLE_TOKEN = "__JARM_PROMPT_TITLE__"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

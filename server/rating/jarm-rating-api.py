@@ -15,9 +15,9 @@ from urllib.parse import urlparse
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from submission_messages import message_for
 
-DB_PATH = os.environ.get("AGORA_RATING_DB", "/var/lib/jarm-rating/ratings.db")
-LISTEN_ADDR = os.environ.get("AGORA_RATING_HOST", "127.0.0.1")
-LISTEN_PORT = int(os.environ.get("AGORA_RATING_PORT", "8091"))
+DB_PATH = os.environ.get("JARM_RATING_DB", "/var/lib/jarm-rating/ratings.db")
+LISTEN_ADDR = os.environ.get("JARM_RATING_HOST", "127.0.0.1")
+LISTEN_PORT = int(os.environ.get("JARM_RATING_PORT", "8091"))
 MAX_CONTENT_LENGTH = 64 * 1024
 MAX_COMMENT_LENGTH = 10_000
 

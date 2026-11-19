@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=newoether
-Group=newoether
+User=jarm
+Group=jarm
 ExecStart=/usr/bin/python3 /opt/jarm-crash/jarm-crash.py
 Restart=on-failure
 RestartSec=2

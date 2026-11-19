@@ -141,7 +141,7 @@ by identity and enforces atomic transactions. No hidden repair loops detected.
 | Atomic file publish | `atomic_file_jni.cpp` | Crash-safe file writes |
 | Managed directory | `managed_directory_jni.cpp` | Sandbox file access |
 
-CMake targets: `jarm_llama`, `jarm_proot` (renamed from `agora_*`).
+CMake targets: `jarm_llama`, `jarm_proot`.
 
 ---
 

@@ -31,7 +31,7 @@ class SubmissionMessagesTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.config = self.root / "messages.json"
-        self.env = patch.dict(os.environ, {"AGORA_SUBMISSION_MESSAGES": str(self.config)})
+        self.env = patch.dict(os.environ, {"JARM_SUBMISSION_MESSAGES": str(self.config)})
         self.env.start()
         self.message = {"id": "reply-1", "title": "Thank You", "body": "Received", "buttonText": "OK"}
         self.config.write_text(json.dumps({"org.example.mobile": self.message}), encoding="utf-8")

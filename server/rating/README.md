@@ -28,16 +28,16 @@ Copy `nginx-public.location` into the public TLS virtual host, validate the Ngin
 
 | Variable | Default |
 | --- | --- |
-| `AGORA_RATING_DB` | `/var/lib/jarm-rating/ratings.db` |
-| `AGORA_RATING_HOST` | `127.0.0.1` |
-| `AGORA_RATING_PORT` | `8091` |
+| `JARM_RATING_DB` | `/var/lib/jarm-rating/ratings.db` |
+| `JARM_RATING_HOST` | `127.0.0.1` |
+| `JARM_RATING_PORT` | `8091` |
 
 No database, submitted record, host identity, domain, certificate, token, or credential is included.
 
 ## Optional submission messages
 
 Install `../submission_messages.py` alongside this service's Python entry point.
-Set `AGORA_SUBMISSION_MESSAGES` in the service environment to an administrator-managed,
+Set `JARM_SUBMISSION_MESSAGES` in the service environment to an administrator-managed,
 UTF-8 JSON file outside the checkout. Leave it unset to retain the ordinary success response.
 
 The file maps exact runtime package names to a message object, or `null` to omit a message:

@@ -610,7 +610,7 @@ class ProviderStreamingImageRequestTest {
         fun assertExactLength() {
             contentLength?.let { assertEquals(bytes.size.toLong(), it) }
             if (contentLength == null) assertTrue("Streaming image requests use chunked transfer", chunked)
-            assertTrue(bytes.decodeToString().contains("__AGORA_BASE64_").not())
+            assertTrue(bytes.decodeToString().contains("__JARM_BASE64_").not())
         }
     }
 

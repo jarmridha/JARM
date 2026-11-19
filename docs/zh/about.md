@@ -18,4 +18,4 @@
 
 JARM v2.2.0 及后续版本采用 [GNU GPL v3.0](https://github.com/jarmridha/JARM/blob/master/LICENSE)。
 
-v2.1.0 及更早版本仍按其[原 MIT 许可证](https://github.com/jarmridha/JARM/blob/9fc92fc3518c880158111ae1e9534ed8ffd09c6d/LICENSE)提供。这是按版本划分的许可历史，不表示当前项目可在 MIT 与 GPL 之间任选。
+v2.1.0 及更早版本仍按其[原 MIT 许可证](https://github.com/jarmridha/JARM/blob/main/LICENSE)提供。这是按版本划分的许可历史，不表示当前项目可在 MIT 与 GPL 之间任选。

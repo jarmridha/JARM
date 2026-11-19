@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val INLINE_SHARE_LIMIT_BYTES = 256 * 1024
-private const val SHARE_ERROR_DETAIL_TOKEN = "__AGORA_SHARE_ERROR_DETAIL__"
+private const val SHARE_ERROR_DETAIL_TOKEN = "__JARM_SHARE_ERROR_DETAIL__"
 private const val STREAM_SCROLL_RESUME_DELAY_MS = 160L
 internal const val DRAWER_COMPOSER_DISMISS_THRESHOLD = 0.5f
 

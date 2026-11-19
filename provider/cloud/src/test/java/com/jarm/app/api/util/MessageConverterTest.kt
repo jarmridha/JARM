@@ -192,7 +192,7 @@ class MessageConverterTest {
             assertEquals(3, parts.size)
             assertEquals("keep this text", parts.first().jsonObject.getValue("text").jsonPrimitive.content)
             assertFalse(body.contains("unavailable", ignoreCase = true))
-            assertFalse(body.contains("__AGORA_BASE64_"))
+            assertFalse(body.contains("__JARM_BASE64_"))
         }
     }
 
