@@ -79,7 +79,7 @@ private fun typographyWithFont(family: FontFamily): Typography {
 @Composable
 fun JARMTheme(
     themeMode: ThemeMode = ThemeMode.FOLLOW_DEVICE,
-    colorSchemePreset: ColorSchemePreset = ColorSchemePreset.FOREST,
+    colorSchemePreset: ColorSchemePreset = ColorSchemePreset.EMBER,
     schemeStyle: SchemeStyle = SchemeStyle.TONAL_SPOT,
     dynamicColor: Boolean = false,
     amoledEnabled: Boolean = false,

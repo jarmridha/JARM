@@ -20,6 +20,7 @@ internal fun presetDisplayName(preset: ColorSchemePreset): String = when (preset
     ColorSchemePreset.LAVENDER -> stringResource(R.string.color_scheme_lavender)
     ColorSchemePreset.SLATE -> stringResource(R.string.color_scheme_slate)
     ColorSchemePreset.OCEAN -> stringResource(R.string.color_scheme_ocean)
+    ColorSchemePreset.EMBER -> stringResource(R.string.color_scheme_ember)
 }
 
 @Composable

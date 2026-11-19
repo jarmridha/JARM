@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- JARM brand palette: midnight navy + amber-gold -->
+    <color name="jarm_navy">#FF0B1437</color>
+    <color name="jarm_navy_hi">#FF182A68</color>
+    <color name="jarm_amber">#FFFFB020</color>
+    <color name="jarm_amber_hi">#FFFFD36B</color>
+    <color name="jarm_amber_lo">#FFF5820B</color>
+    <color name="jarm_spark">#FFFFF3D6</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
