@@ -1,12 +1,12 @@
 [Unit]
-Description=Agora anonymous crash-report receiver
+Description=JARM anonymous crash-report receiver
 After=network.target
 
 [Service]
 Type=simple
 User=newoether
 Group=newoether
-ExecStart=/usr/bin/python3 /opt/agora-crash/agora-crash.py
+ExecStart=/usr/bin/python3 /opt/jarm-crash/jarm-crash.py
 Restart=on-failure
 RestartSec=2
 
@@ -15,7 +15,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/agora-crash
+ReadWritePaths=/var/lib/jarm-crash
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -1,12 +1,12 @@
 [Unit]
-Description=Agora rating API
+Description=JARM rating API
 After=network.target
 
 [Service]
 Type=simple
-User=agora-rating
-Group=agora-rating
-ExecStart=/usr/bin/python3 /opt/agora-rating/agora-rating-api.py
+User=jarm-rating
+Group=jarm-rating
+ExecStart=/usr/bin/python3 /opt/jarm-rating/jarm-rating-api.py
 Restart=on-failure
 RestartSec=2
 
@@ -14,7 +14,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/agora-rating
+ReadWritePaths=/var/lib/jarm-rating
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
